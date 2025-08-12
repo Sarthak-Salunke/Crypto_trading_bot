@@ -1,158 +1,186 @@
-## 📖 Overview
-This is a Python-based **Binance Futures Trading Bot** designed for the **Binance USDT-M Futures Testnet**.  
-It supports **market orders, limit orders, stop-limit orders**, and advanced validation to ensure orders comply with Binance exchange rules.  
-The bot comes with:
+Here’s a polished and structured `README.md` draft inspired by your project repository:
 
-- **Command-Line Interface (CLI)** for manual trading
-- **Validation layer** for price, quantity, symbol, and filters
-- **Comprehensive logging** (trade, error, API calls)
-- **Extensible architecture** for adding advanced order types and strategies
-- **Test suite** (Pytest) for functionality verification
+---
 
+# Crypto Trading Bot (Binance Futures – Testnet)
 
-## 🚀 Features
-- ✅ Connect to Binance Testnet using API keys
-- ✅ Retrieve account balances
-- ✅ Place **Market Orders** (Buy/Sell)
-- ✅ Place **Limit Orders** with price validation
-- ✅ Place **Stop-Limit Orders** with exchange rule enforcement
-- ✅ Cancel single or all orders
-- ✅ Interactive CLI mode
-- ✅ Detailed logging — trades, API calls, errors
-- ✅ Supports `.env` secure config for credentials
-- ✅ Test suite with unit & integration tests
+A **Python-based command-line trading bot** for **Binance USDT-M Futures Testnet**, supporting market, limit, and stop-limit orders, with advanced validation, logging, testing, and a modular architecture. This lightweight trading companion is perfect for developers building and experimenting with strategies on Binance’s futures test environment. ([GitHub][1])
 
+---
 
-## 📂 Project Structure
+## Features
 
+* Connects securely to Binance Testnet using API keys
+* Retrieve account balance information
+* Place **Market**, **Limit**, and **Stop-Limit** orders with validation to comply with exchange rules
+* Cancel single or all orders via CLI
+* **Interactive mode** through a shell-like interface for quick testing
+* Detailed logging via system, trades, API, and error logs
+* Modular codebase ready for extension (e.g., strategies, new order types)
+* Comprehensive test suite using **pytest** for both unit and integration testing ([GitHub][1])
+
+---
+
+## Project Structure
+
+```
 crypto_trading_bot/
-│
 ├── bot/
-│   ├── basic_bot.py           # Core bot logic and API interactions
-│   ├── cli.py                 # Command-line interface for trading
-│   ├── orders.py              # OrderManager (stop-limit, cancel, etc)
-│   ├── price_validator.py     # Price validation rules
-│   ├── dataclasses.py         # Data models for orders/trades
-│   ├── logger.py              # Logging configuration
-│   ├── utils.py               # Helper functions
-│   └── config.py              # Config constants and classes
-│
+│   ├── basic_bot.py         # Core trading logic and Binance API interactions
+│   ├── cli.py               # CLI interface for trading actions
+│   ├── orders.py            # OrderManager logic – stop-limit, cancels, etc.
+│   ├── price_validator.py   # Rules for price and quantity validation
+│   ├── dataclasses.py       # Structured data models (orders, trades, etc.)
+│   ├── logger.py            # Logging configuration and setup
+│   ├── utils.py             # Helper utilities
+│   └── config.py            # Configuration constants and settings
 ├── logs/
-│   ├── api.log, system.log, trades.log, errors.log, ...
-│
+│   ├── api.log
+│   ├── system.log
+│   ├── trades.log
+│   └── errors.log
 ├── test/
-│   ├── test_trading_bot.py, test_stop_limit_orders.py, ...
-│   ├── run_stop_limit_tests.py
-│
-├── .env                       # API keys and project config (never share publicly)
-├── config.json                # Project or task configuration
-├── README.md                  # Main documentation
-├── requirements.txt           # Python dependencies
-└── venv/                      # Python virtual environment
+│   ├── test_trading_bot.py
+│   ├── test_stop_limit_orders.py
+│   └── run_stop_limit_tests.py
+├── config.json
+├── requirements.txt
+├── .gitignore
+├── .env                     # (Local only—never commit!)
+└── README.md                # (That’s this file!)
+```
 
+---
 
-## 🛠 Requirements
+## Getting Started
 
-- Python **3.8+**
-- Binance Testnet account & API keys  
-  (Create at: [https://testnet.binancefuture.com/en/futures/USDM](https://testnet.binancefuture.com/en/futures/USDM))
-- Installed dependencies (see below)
+### 1. Clone the repo
 
-## 📥 Installation
+```bash
+git clone https://github.com/Sarthak-Salunke/Crypto_trading_bot.git
+cd Crypto_trading_bot
+```
 
-### 1️⃣ Clone the Repository
-git clone  https://github.com/Sarthak-Salunke/Crypto_trading_bot.git
-cd crypto_trading_bot
+### 2. Setup a virtual environment
 
-
-### 2️⃣ Create & Activate Virtual Environment
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# Mac/Linux
+```bash
+python3 -m venv venv
+# On macOS/Linux
 source venv/bin/activate
+# On Windows
+venv\Scripts\activate
+```
 
-### 3️⃣ Install Dependencies
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-## 🔑 Environment Configuration
+### 4. Configure Environment Variables
 
-Edit `.env` and add your Binance Testnet API credentials:
+Create a `.env` file and include:
+
+```
 BINANCE_API_KEY=your_testnet_api_key
 BINANCE_SECRET_KEY=your_testnet_secret
 BINANCE_TESTNET=true
-
-# Optional logging config
 LOG_LEVEL=INFO
 LOG_COLORED_OUTPUT=true
+```
 
-⚠ **Security Note:** Never commit your `.env` file to GitHub or share it publicly.
+> **⚠ Security Note:** Never commit your `.env` file or API credentials to GitHub. ([GitHub][1])
 
-## 💻 CLI Usage
+---
 
-Run the CLI using:
-python -m bot.cli  [options]
+## Usage Guide
 
-### Commands
+Run the CLI:
 
-#### **1. Show Account Balance**
+```bash
+python -m bot.cli [command] [options]
+```
+
+**Commands:**
+
+| Command       | Description                                                                            |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `account`     | View account balance (e.g., available & total USDT)                                    |
+| `market`      | Place market order (`--symbol`, `--side`, `--quantity`)                                |
+| `limit`       | Place limit order (`--symbol`, `--side`, `--quantity`, `--price`)                      |
+| `stop-limit`  | Place stop-limit order (`--symbol`, `--side`, `--quantity`, `--price`, `--stop-price`) |
+| `cancel`      | Cancel an order (`--symbol`, `--order-id`)                                             |
+| `interactive` | Launch interactive trading mode                                                        |
+
+**Examples:**
+
+```bash
 python -m bot.cli account
-
-Example output:
-=== Account Balance ===
-USDT Available: 14500.50
-USDT Total: 15000.00
-=======================
-
-#### **2. Place Market Order**
 python -m bot.cli market --symbol BTCUSDT --side BUY --quantity 0.001
-
-#### **3. Place Limit Order**
 python -m bot.cli limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 122000
-✔ Validated to avoid incorrect pricing vs. current market.
-
-#### **4. Place Stop-Limit Order**
 python -m bot.cli stop-limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 122000 --stop-price 121800
-⚠ Notional must be ≥ 100 USDT unless `reduceOnly` is set.
-
-#### **5. Cancel Order**
 python -m bot.cli cancel --symbol BTCUSDT --order-id 12345678
-
-#### **6. Interactive Mode**
 python -m bot.cli interactive
-Enters a shell-like interface for quicker test trading.
+```
 
-## 🧪 Testing
+> Order prices/quantities are validated to match Binance’s rules—e.g., minimum notional, tick size, and quantity precision. ([GitHub][1])
 
-Run **all tests**:
+---
+
+## Testing
+
+Run all tests:
+
+```bash
 pytest -v
+```
 
-Run **only stop-limit tests**:
+Run only stop-limit tests:
+
+```bash
 python run_stop_limit_tests.py
+```
 
-## 🗂 Logging
+> Tests help guarantee behavior across edge cases and order logic correctness. ([GitHub][1])
 
-Logs are stored in the `/logs` directory:
-- **system.log** — general system messages
-- **trades.log** — trade execution records
-- **errors.log** — errors & exceptions
-- **api.log** — API requests/responses
+---
 
-## ⚠️ Notes & Best Practices
+## Logging
 
-- This bot **only works on Binance Futures Testnet** unless you change `BINANCE_TESTNET=false`.
-- Always test strategies with **small quantities** first.
-- Use `PriceValidator` to avoid rejected orders.
-- Keep your `.env` secure.
-- Respect Binance **rate limits** to avoid bans.
+Logs are output to the `logs/` directory:
 
-## 📌 Future Improvements
-- 💡 Add OCO order support via CLI
-- 💡 Implement TWAP/Grid trading strategy
-- 💡 Web dashboard for monitoring
-- 💡 Telegram/Discord notifications
+* `system.log` — Startup and system messages
+* `trades.log` — Executed trade records
+* `api.log` — API call and response details
+* `errors.log` — Captured errors and exception traces ([GitHub][1])
 
-## 📜 License
-This project is for **educational and testing purposes only** on Binance Testnet.  
-Trading in real markets involves significant risk.
+---
 
+## Notes & Best Practices
+
+* Bot is configured to work only with **Binance Futures Testnet** unless you manually toggle `BINANCE_TESTNET=false`
+* Always start with small quantities when testing strategies
+* The `PriceValidator` is your safeguard against invalid orders
+* Keep rate limits in mind to avoid API throttling or bans
+* Don’t expose `.env` or sensitive data publicly at any point ([GitHub][1])
+
+---
+
+## Future Enhancements
+
+* Add OCO (One-Cancels-the-Other) order support via CLI
+* Implementation of strategy modules like TWAP or grid trading
+* Web-based dashboard for real-time monitoring
+* Optional Telegram or Discord notifications for trade alerts ([GitHub][1])
+
+---
+
+## License & Disclaimer
+
+This project is provided **for educational and testing purposes only** on Binance Futures Testnet. Engaging in live trading involves substantial risks. Use responsibly. ([GitHub][1])
+
+---
+
+Feel free to adjust any sections to better suit your preferences or upcoming enhancements!
+
+[1]: https://github.com/Sarthak-Salunke/Crypto_trading_bot "GitHub - Sarthak-Salunke/Crypto_trading_bot: Python Binance Futures Trading Bot (Testnet) — A command-line trading bot for Binance USDT-M Futures Testnet supporting market, limit, and stop-limit orders with advanced validation, robust logging, and modular design for strategy development."
