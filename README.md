@@ -61,7 +61,7 @@ crypto_trading_bot/
 ## 📥 Installation
 
 ### 1️⃣ Clone the Repository
-git clone https://github.com/your-username/crypto_trading_bot.git
+git clone  https://github.com/Sarthak-Salunke/Crypto_trading_bot.git
 cd crypto_trading_bot
 
 
