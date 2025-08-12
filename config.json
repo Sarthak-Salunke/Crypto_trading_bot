@@ -1,0 +1,30 @@
+{
+  "api": {
+    "api_key": "your_binance_api_key_here",
+    "api_secret": "your_binance_api_secret_here",
+    "testnet": true,
+    "max_requests_per_second": 10,
+    "max_requests_per_minute": 1200
+  },
+  "trading": {
+    "default_symbol": "BTCUSDT",
+    "default_quantity": 0.001,
+    "default_leverage": 10,
+    "max_position_size": 0.1,
+    "max_daily_loss": 0.05,
+    "stop_loss_percentage": 0.02,
+    "take_profit_percentage": 0.04
+  },
+  "system": {
+    "log_level": "INFO",
+    "enable_monitoring": true,
+    "webhook_url": ""
+  },
+  "bot": {
+    "enable_stop_loss": true,
+    "enable_take_profit": true,
+    "enable_trailing_stop": false,
+    "paper_trading": true,
+    "live_trading": false
+  }
+}
