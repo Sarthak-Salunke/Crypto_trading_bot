@@ -53,6 +53,8 @@ Examples:
   python -m bot.cli limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 45000
   python -m bot.cli stop-limit --symbol BTCUSDT --side BUY --quantity 0.001 --price 45000 --stop-price 46000
   python -m bot.cli cancel --symbol BTCUSDT --order-id 12345678
+  python -m bot.cli order --symbol BTCUSDT --side BUY --quantity 0.001 --type MARKET
+  python -m bot.cli order --symbol BTCUSDT --side SELL --quantity 0.001 --type LIMIT --price 45000
   python -m bot.cli interactive
         """
     )
@@ -63,6 +65,11 @@ Examples:
     account_parser = subparsers.add_parser(
         'account', 
         help='Show account balance and information'
+    )
+    
+    balance_parser = subparsers.add_parser(
+        'balance', 
+        help='Show account balance and information (alias for account)'
     )
     
 
@@ -107,6 +114,67 @@ Examples:
     interactive_parser = subparsers.add_parser(
         'interactive',
         help='Enter interactive mode'
+    )
+    
+    order_parser = subparsers.add_parser(
+        'order',
+        help='Place a custom order with flexible options'
+    )
+    order_parser.add_argument('--symbol', required=True, help='Trading symbol (e.g., BTCUSDT)')
+    order_parser.add_argument('--side', required=True, choices=['BUY', 'SELL'], help='Order side')
+    order_parser.add_argument('--quantity', required=True, type=float, help='Order quantity')
+    order_parser.add_argument('--price', type=float, help='Order price (required for LIMIT orders)')
+    order_parser.add_argument('--stop-price', type=float, help='Stop price (for STOP orders)')
+    order_parser.add_argument('--type', choices=['MARKET', 'LIMIT', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT'], 
+                             default='MARKET', help='Order type (default: MARKET)')
+    order_parser.add_argument('--time-in-force', choices=['GTC', 'IOC', 'FOK'], 
+                             default='GTC', help='Time in force (default: GTC)')
+
+    # Positions command
+    positions_parser = subparsers.add_parser(
+        'positions', 
+        help='List open positions (all or for a specific symbol)'
+    )
+    positions_parser.add_argument(
+        '--symbol', 
+        help='Symbol to filter positions (optional, e.g., BTCUSDT)'
+    )
+    
+    # Orders command - show open orders
+    orders_parser = subparsers.add_parser(
+        'orders',
+        help='List open orders (all or for a specific symbol)'
+    )
+    orders_parser.add_argument(
+        '--symbol',
+        help='Symbol to filter orders (optional, e.g., BTCUSDT)'
+    )
+    
+    # History command - show order history
+    history_parser = subparsers.add_parser(
+        'history',
+        help='Show order history (all or for a specific symbol)'
+    )
+    history_parser.add_argument(
+        '--symbol',
+        help='Symbol to filter history (optional, e.g., BTCUSDT)'
+    )
+    history_parser.add_argument(
+        '--limit',
+        type=int,
+        default=10,
+        help='Number of orders to show (default: 10)'
+    )
+    
+    # Cancel-all command - cancel all open orders for a symbol
+    cancel_all_parser = subparsers.add_parser(
+        'cancel-all',
+        help='Cancel all open orders for a given symbol'
+    )
+    cancel_all_parser.add_argument(
+        '--symbol',
+        required=True,
+        help='Trading symbol (e.g., BTCUSDT)'
     )
     
     return parser
@@ -283,20 +351,257 @@ def handle_stop_limit_command(cli: TradingBotCLI, args: argparse.Namespace) -> N
 
 
 def handle_cancel_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
-    """Handle cancel order command."""
+    """Handle cancel order command with improved error handling."""
     try:
         result = cli.bot.client.futures_cancel_order(symbol=args.symbol, orderId=args.order_id)
         if result:
-            print(f"Order cancelled successfully:")
-            print(f"Symbol: {result.get('symbol')}")
-            print(f"Order ID: {result.get('orderId')}")
-            print(f"Status: {result.get('status')}")
+            print(f"✅ Order cancelled successfully:")
+            print(f"   Symbol: {result.get('symbol')}")
+            print(f"   Order ID: {result.get('orderId')}")
+            print(f"   Status: {result.get('status')}")
         else:
-            print("Failed to cancel order")
+            print("❌ Failed to cancel order")
             
     except Exception as e:
-        logger.error(f"Error cancelling order: {e}")
+        error_msg = str(e)
+        if "Unknown order sent" in error_msg or "-2011" in error_msg:
+            print("❌ Error: Unknown order sent")
+            print("   This order ID doesn't exist or can't be found.")
+            print("   💡 Use 'python -m bot.cli orders --symbol {}' to see open orders".format(args.symbol))
+            print("   💡 Make sure you're using a real order ID from your account")
+        else:
+            logger.error(f"Error cancelling order: {e}")
+            print(f"Error: {e}")
+
+
+def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
+    """Handle flexible order command with multiple order types."""
+    try:
+        # Validate required parameters based on order type
+        if args.type in ['LIMIT', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT'] and not args.price:
+            print(f"❌ Price is required for {args.type} orders")
+            return
+            
+        if args.type in ['STOP', 'STOP_MARKET', 'TAKE_PROFIT'] and not args.stop_price:
+            print(f"❌ Stop price is required for {args.type} orders")
+            return
+
+        # Build order parameters
+        order_params = {
+            'symbol': args.symbol,
+            'side': args.side,
+            'quantity': args.quantity,
+            'order_type': args.type,
+            'time_in_force': args.time_in_force
+        }
+        
+        if args.price:
+            order_params['price'] = args.price
+            
+        if args.stop_price:
+            order_params['stop_price'] = args.stop_price
+
+        # Validate parameters
+        try:
+            validated_params = validate_order_parameters(**order_params)
+        except Exception as e:
+            print(f"❌ Invalid order parameters: {e}")
+            return
+
+        # Place order based on type
+        result = None
+        if args.type == 'MARKET':
+            result = cli.bot.place_market_order(args.symbol, args.side, args.quantity)
+        elif args.type == 'LIMIT':
+            result = cli.bot.place_limit_order(args.symbol, args.side, args.quantity, args.price)
+        elif args.type == 'STOP':
+            result = cli.order_manager.place_stop_limit_order(
+                args.symbol, args.side, args.quantity, args.price, args.stop_price
+            )
+        elif args.type == 'STOP_MARKET':
+            # Use stop market order
+            result = cli.bot.client.futures_create_order(
+                symbol=args.symbol,
+                side=args.side,
+                type='STOP_MARKET',
+                quantity=args.quantity,
+                stopPrice=args.stop_price
+            )
+        elif args.type == 'TAKE_PROFIT':
+            # Use take profit order
+            result = cli.bot.client.futures_create_order(
+                symbol=args.symbol,
+                side=args.side,
+                type='TAKE_PROFIT',
+                quantity=args.quantity,
+                price=args.price,
+                stopPrice=args.stop_price
+            )
+
+        if result:
+            print(f"✅ {args.type} order placed successfully:")
+            print(f"   Symbol: {result.get('symbol')}")
+            print(f"   Order ID: {result.get('orderId')}")
+            print(f"   Status: {result.get('status')}")
+            print(f"   Type: {args.type}")
+            print(f"   Side: {args.side}")
+            print(f"   Quantity: {args.quantity}")
+            if args.price:
+                print(f"   Price: {args.price}")
+            if args.stop_price:
+                print(f"   Stop Price: {args.stop_price}")
+        else:
+            print(f"❌ Failed to place {args.type} order")
+            
+    except Exception as e:
+        logger.error(f"Error placing order: {e}")
         print(f"Error: {e}")
+
+
+def handle_positions_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
+    """Handle positions command to display open positions."""
+    try:
+        # Get open positions
+        positions = cli.bot.get_positions(symbol=args.symbol)
+        
+        if not positions:
+            print("No open positions found.")
+            return
+            
+        print("\n=== Open Positions ===")
+        print("-" * 80)
+        
+        for pos in positions:
+            symbol = pos.get('symbol', 'N/A')
+            side = pos.get('side', 'N/A')
+            position_size = pos.get('positionAmt', '0')
+            entry_price = pos.get('entryPrice', '0')
+            mark_price = pos.get('markPrice', '0')
+            unrealized_pnl = pos.get('unRealizedProfit', '0')
+            leverage = pos.get('leverage', '1')
+            
+            print(f"Symbol: {symbol}")
+            print(f"Side: {side}")
+            print(f"Position Size: {position_size}")
+            print(f"Entry Price: ${float(entry_price):,.2f}")
+            print(f"Mark Price: ${float(mark_price):,.2f}")
+            print(f"Unrealized PNL: ${float(unrealized_pnl):,.2f}")
+            print(f"Leverage: {leverage}x")
+            print("-" * 80)
+            
+    except Exception as e:
+        logger.error(f"Error fetching positions: {e}")
+        print(f"Error: {e}")
+
+
+def handle_orders_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
+    """Handle orders command to display open orders."""
+    try:
+        # Get open orders
+        if args.symbol:
+            orders = cli.bot.client.futures_get_open_orders(symbol=args.symbol)
+        else:
+            orders = cli.bot.client.futures_get_open_orders()
+        
+        if not orders:
+            print("No open orders found.")
+            return
+            
+        print("\n=== Open Orders ===")
+        print("-" * 100)
+        
+        for order in orders:
+            print(f"Symbol: {order.get('symbol', 'N/A')}")
+            print(f"Order ID: {order.get('orderId', 'N/A')}")
+            print(f"Side: {order.get('side', 'N/A')}")
+            print(f"Type: {order.get('type', 'N/A')}")
+            print(f"Status: {order.get('status', 'N/A')}")
+            print(f"Price: {order.get('price', 'N/A')}")
+            print(f"Quantity: {order.get('origQty', 'N/A')}")
+            print(f"Filled: {order.get('executedQty', '0')}")
+            print("-" * 100)
+            
+    except Exception as e:
+        logger.error(f"Error fetching orders: {e}")
+        print(f"Error: {e}")
+
+
+def handle_history_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
+    """Handle history command to display order history."""
+    try:
+        # Get order history
+        params = {'limit': args.limit}
+        if args.symbol:
+            params['symbol'] = args.symbol
+            
+        orders = cli.bot.client.futures_get_all_orders(**params)
+        
+        if not orders:
+            print("No order history found.")
+            return
+            
+        print("\n=== Order History ===")
+        print("-" * 120)
+        
+        # Show most recent orders first
+        for order in reversed(orders[-args.limit:]):
+            print(f"Symbol: {order.get('symbol', 'N/A')}")
+            print(f"Order ID: {order.get('orderId', 'N/A')}")
+            print(f"Side: {order.get('side', 'N/A')}")
+            print(f"Type: {order.get('type', 'N/A')}")
+            print(f"Status: {order.get('status', 'N/A')}")
+            print(f"Price: {order.get('price', 'N/A')}")
+            print(f"Quantity: {order.get('origQty', 'N/A')}")
+            print(f"Filled: {order.get('executedQty', '0')}")
+            print(f"Time: {order.get('time', 'N/A')}")
+            print("-" * 120)
+            
+    except Exception as e:
+        logger.error(f"Error fetching order history: {e}")
+        print(f"Error: {e}")
+
+
+def handle_cancel_all_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
+    """Handle cancel-all command to cancel all open orders for a symbol."""
+    try:
+        # Get all open orders for the symbol
+        orders = cli.bot.client.futures_get_open_orders(symbol=args.symbol)
+        
+        if not orders:
+            print(f"No open orders found for {args.symbol}")
+            return
+            
+        print(f"\nFound {len(orders)} open order(s) for {args.symbol}")
+        print("Cancelling all orders...")
+        
+        cancelled_count = 0
+        failed_count = 0
+        
+        for order in orders:
+            try:
+                order_id = order.get('orderId')
+                result = cli.bot.client.futures_cancel_order(
+                    symbol=args.symbol, 
+                    orderId=order_id
+                )
+                if result:
+                    print(f"✅ Cancelled order {order_id}")
+                    cancelled_count += 1
+                else:
+                    print(f"❌ Failed to cancel order {order_id}")
+                    failed_count += 1
+                    
+            except Exception as e:
+                print(f"❌ Error cancelling order {order_id}: {e}")
+                failed_count += 1
+        
+        print(f"\nSummary:")
+        print(f"✅ Successfully cancelled: {cancelled_count}")
+        if failed_count > 0:
+            print(f"❌ Failed to cancel: {failed_count}")
+            
+    except Exception as e:
+        logger.error(f"Error cancelling all orders: {e}")
 
 
 def interactive_mode(cli: TradingBotCLI) -> None:
@@ -434,6 +739,21 @@ def main() -> None:
             
         elif args.command == 'cancel':
             handle_cancel_command(cli, args)
+            
+        elif args.command == 'order':
+            handle_order_command(cli, args)
+            
+        elif args.command == 'positions':
+            handle_positions_command(cli, args)
+            
+        elif args.command == 'orders':
+            handle_orders_command(cli, args)
+            
+        elif args.command == 'history':
+            handle_history_command(cli, args)
+            
+        elif args.command == 'cancel-all':
+            handle_cancel_all_command(cli, args)
             
         elif args.command == 'interactive':
             interactive_mode(cli)
