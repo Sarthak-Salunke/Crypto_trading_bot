@@ -130,7 +130,6 @@ Examples:
     order_parser.add_argument('--time-in-force', choices=['GTC', 'IOC', 'FOK'], 
                              default='GTC', help='Time in force (default: GTC)')
 
-    # Positions command
     positions_parser = subparsers.add_parser(
         'positions', 
         help='List open positions (all or for a specific symbol)'
@@ -139,8 +138,6 @@ Examples:
         '--symbol', 
         help='Symbol to filter positions (optional, e.g., BTCUSDT)'
     )
-    
-    # Orders command - show open orders
     orders_parser = subparsers.add_parser(
         'orders',
         help='List open orders (all or for a specific symbol)'
@@ -149,8 +146,6 @@ Examples:
         '--symbol',
         help='Symbol to filter orders (optional, e.g., BTCUSDT)'
     )
-    
-    # History command - show order history
     history_parser = subparsers.add_parser(
         'history',
         help='Show order history (all or for a specific symbol)'
@@ -165,8 +160,6 @@ Examples:
         default=10,
         help='Number of orders to show (default: 10)'
     )
-    
-    # Cancel-all command - cancel all open orders for a symbol
     cancel_all_parser = subparsers.add_parser(
         'cancel-all',
         help='Cancel all open orders for a given symbol'
@@ -377,7 +370,6 @@ def handle_cancel_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
 def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
     """Handle flexible order command with multiple order types."""
     try:
-        # Validate required parameters based on order type
         if args.type in ['LIMIT', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT'] and not args.price:
             print(f"❌ Price is required for {args.type} orders")
             return
@@ -386,7 +378,6 @@ def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
             print(f"❌ Stop price is required for {args.type} orders")
             return
 
-        # Build order parameters
         order_params = {
             'symbol': args.symbol,
             'side': args.side,
@@ -401,14 +392,12 @@ def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
         if args.stop_price:
             order_params['stop_price'] = args.stop_price
 
-        # Validate parameters
         try:
             validated_params = validate_order_parameters(**order_params)
         except Exception as e:
             print(f"❌ Invalid order parameters: {e}")
             return
 
-        # Place order based on type
         result = None
         if args.type == 'MARKET':
             result = cli.bot.place_market_order(args.symbol, args.side, args.quantity)
@@ -419,7 +408,6 @@ def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
                 args.symbol, args.side, args.quantity, args.price, args.stop_price
             )
         elif args.type == 'STOP_MARKET':
-            # Use stop market order
             result = cli.bot.client.futures_create_order(
                 symbol=args.symbol,
                 side=args.side,
@@ -428,7 +416,6 @@ def handle_order_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
                 stopPrice=args.stop_price
             )
         elif args.type == 'TAKE_PROFIT':
-            # Use take profit order
             result = cli.bot.client.futures_create_order(
                 symbol=args.symbol,
                 side=args.side,
@@ -497,7 +484,6 @@ def handle_positions_command(cli: TradingBotCLI, args: argparse.Namespace) -> No
 def handle_orders_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
     """Handle orders command to display open orders."""
     try:
-        # Get open orders
         if args.symbol:
             orders = cli.bot.client.futures_get_open_orders(symbol=args.symbol)
         else:
@@ -529,7 +515,6 @@ def handle_orders_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
 def handle_history_command(cli: TradingBotCLI, args: argparse.Namespace) -> None:
     """Handle history command to display order history."""
     try:
-        # Get order history
         params = {'limit': args.limit}
         if args.symbol:
             params['symbol'] = args.symbol
@@ -542,8 +527,7 @@ def handle_history_command(cli: TradingBotCLI, args: argparse.Namespace) -> None
             
         print("\n=== Order History ===")
         print("-" * 120)
-        
-        # Show most recent orders first
+      
         for order in reversed(orders[-args.limit:]):
             print(f"Symbol: {order.get('symbol', 'N/A')}")
             print(f"Order ID: {order.get('orderId', 'N/A')}")
