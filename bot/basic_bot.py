@@ -2,6 +2,7 @@ import logging
 import time
 from decimal import Decimal
 from typing import Dict, Optional, Any, Union
+import datetime
 
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
@@ -21,10 +22,17 @@ class BasicBot:
             
         try:
             self.client = Client(api_key, api_secret, testnet=testnet)
+            
+            # Configure for Binance Futures testnet
+            if testnet:
+                self.client.API_URL = 'https://testnet.binancefuture.com/fapi'
+                logger.info("Configured for Binance Futures testnet")
+            
             self.exchange_info: Optional[Dict] = None
             self.symbol_filters: Dict[str, Dict] = {}
+            self.time_offset = 0
             
-
+            self._sync_time_with_binance()
             self._initialize_exchange_info()
             
             logger.info(f"BasicBot initialized successfully (testnet={testnet})")
@@ -54,13 +62,55 @@ class BasicBot:
             logger.error(f"Failed to retrieve exchange info: {e}")
             raise
     
+    def _sync_time_with_binance(self) -> None:
+        """Synchronize local time with Binance server time to prevent timestamp errors."""
+        try:
+            server_time = self.client.get_server_time()
+            server_timestamp = server_time['serverTime']
+            local_timestamp = int(time.time() * 1000)
+            self.time_offset = server_timestamp - local_timestamp
+            print(f"✅ Time synced with Binance (offset: {self.time_offset} ms)")
+            logger.info(f"Time synchronized with Binance. Server Time: {server_timestamp}, Local Time: {local_timestamp}, Offset: {self.time_offset}ms")
+        except Exception as e:
+            print(f"⚠️ Failed to sync time: {e}")
+            logger.warning(f"Failed to sync time with Binance: {e}")
+            self.time_offset = 0
+
+    def _get_synced_timestamp(self) -> int:
+        """Get timestamp adjusted for Binance server time."""
+        return int(time.time() * 1000) + self.time_offset
+
     def _make_api_call(self, func, *args, max_retries: int = 3, **kwargs) -> Any:
         for attempt in range(max_retries + 1):
             try:
+                # Only add timestamp for methods that support it (like order creation)
+                timestamp_methods = [
+                    'futures_create_order',
+                    'futures_cancel_order',
+                    'futures_get_order',
+                    'futures_account',
+                    'futures_symbol_ticker'
+                ]
+                
+                # Check if this is a method that needs timestamp
+                func_name = str(func).split('.')[-1].split(' ')[0]
+                if any(method in str(func) for method in timestamp_methods):
+                    kwargs['timestamp'] = self._get_synced_timestamp()
+                
                 return func(*args, **kwargs)
                 
             except BinanceAPIException as e:
-                if e.code == -1003:
+                if e.code == -1021:  # Timestamp for this request was outside the recvWindow
+                    if attempt < max_retries:
+                        logger.warning(f"Timestamp error detected, resyncing time (attempt {attempt + 1})")
+                        self._sync_time_with_binance()
+                        wait_time = 2 ** attempt
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error("Max retries exceeded for timestamp sync")
+                        raise
+                elif e.code == -1003:
                     if attempt < max_retries:
                         wait_time = 2 ** attempt
                         logger.warning(f"Rate limit exceeded, waiting {wait_time}s (attempt {attempt + 1})")
@@ -284,6 +334,32 @@ class BasicBot:
     def sell_limit(self, symbol: str, quantity: float, price: float, 
                    time_in_force: str = 'GTC') -> Dict[str, Any]:
         return self.place_limit_order(symbol, 'SELL', quantity, price, time_in_force)
+
+    def get_positions(self, symbol: str = None) -> list:
+        """Get open futures positions.
+        
+        Args:
+            symbol (str, optional): Filter positions by symbol
+            
+        Returns:
+            list: List of open position dictionaries
+        """
+        try:
+            account = self._make_api_call(self.client.futures_account)
+            positions = account.get('positions', [])
+            
+            # Filter out positions with zero size
+            open_positions = [p for p in positions if float(p.get('positionAmt', 0)) != 0]
+            
+            # Filter by symbol if provided
+            if symbol:
+                open_positions = [p for p in open_positions if p.get('symbol') == symbol.upper()]
+                
+            return open_positions
+            
+        except Exception as e:
+            logger.error(f"Error fetching positions: {e}")
+            return []
 
 
 if __name__ == "__main__":
