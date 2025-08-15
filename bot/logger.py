@@ -319,22 +319,18 @@ def get_logger(logger_type: str = 'system') -> logging.Logger:
 
 
 def log_trade(action: str, symbol: str, side: str, quantity: float, **kwargs) -> None:
-    """Convenience function for trade logging."""
     get_trading_logger().log_trade(action, symbol, side, quantity, **kwargs)
 
 
 def log_api_call(endpoint: str, method: str, params: Dict[str, Any], **kwargs) -> None:
-    """Convenience function for API call logging."""
     get_trading_logger().log_api_call(endpoint, method, params, **kwargs)
 
 
 def log_performance(operation: str, duration: float, **kwargs) -> None:
-    """Convenience function for performance logging."""
     get_trading_logger().log_performance(operation, duration, **kwargs)
 
 
 def log_error(error: Exception, context: Optional[Dict[str, Any]] = None) -> None:
-    """Convenience function for error logging."""
     get_trading_logger().log_error(error, context)
 
 
