@@ -65,6 +65,11 @@ Examples:
         help='Show account balance and information'
     )
     
+    balance_parser = subparsers.add_parser(
+        'balance', 
+        help='Show account balance and information (alias for account)'
+    )
+    
 
     market_parser = subparsers.add_parser(
         'market', 
