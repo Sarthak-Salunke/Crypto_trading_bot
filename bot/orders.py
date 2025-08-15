@@ -418,8 +418,8 @@ if __name__ == "__main__":
         if bot.validate_symbol('BTCUSDT'):
             current_price = bot.get_symbol_price('BTCUSDT')
             print(f"Current BTCUSDT price: {current_price}")
-            stop_price = current_price * 0.95  # 5% below current price
-            limit_price = stop_price * 0.99   # 1% below stop price
+            stop_price = current_price * 0.95  
+            limit_price = stop_price * 0.99  
             
             print(f"Example sell stop-limit order would be:")
             print(f"Stop Price: {stop_price}")
@@ -428,7 +428,6 @@ if __name__ == "__main__":
         open_orders = order_manager.get_open_orders('BTCUSDT')
         print(f"Open orders for BTCUSDT: {len(open_orders)}")
         
-        # Show cached orders
         cached_orders = order_manager.get_cached_orders()
         print(f"Cached orders: {len(cached_orders)}")
         
