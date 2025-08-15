@@ -1,21 +1,19 @@
 import os
 from typing import Dict, Any
 
-class APIConfig:
-    """Binance API configuration settings."""
+class APIConfig:                                                                                     
     
     API_KEY = os.getenv('BINANCE_API_KEY', '')
     API_SECRET = os.getenv('BINANCE_API_SECRET', '')
     
     TESTNET = os.getenv('USE_TESTNET', 'true').lower() == 'true'
     TESTNET_URL = 'https://testnet.binancefuture.com'
-    MAINNET_URL = 'https://fapi.binance.com'
+    MAINNET_URL = 'ht             tps://fapi.binance.com'
     
     MAX_REQUESTS_PER_SECOND = 10
     MAX_REQUESTS_PER_MINUTE = 1200
 
 class TradingConfig:
-    """Trading parameters and settings."""
     
     DEFAULT_SYMBOL = 'BTCUSDT'
     DEFAULT_QUANTITY = 0.001
@@ -32,7 +30,6 @@ class TradingConfig:
     QUANTITY_PRECISION = 3
 
 class SystemConfig:
-    """System-level configuration."""
     
     
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -47,7 +44,6 @@ class SystemConfig:
     WEBHOOK_URL = os.getenv('WEBHOOK_URL', '')
 
 class BotConfig:
-    """Main bot configuration."""
     
     BOT_NAME = 'BinanceTradingBot'
     VERSION = '1.0.0'
